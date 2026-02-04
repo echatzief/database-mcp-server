@@ -2,13 +2,15 @@ import asyncpg
 import aiomysql
 
 from src.lib.config import Config
+from src.database.mysql_client import MySQLClient
+from src.database.postgres_client import PostgresClient
 
 
 class DatabaseManager:
     def __init__(self, config: Config) -> None:
         self.config = config
         self.pool = None
-        self.client = None
+        self._client = None
 
     async def connect(self) -> None:
         if self.config.db_provider == "postgres":
@@ -26,11 +28,11 @@ class DatabaseManager:
             port=int(self.config.db_port),
             user=self.config.db_user,
             password=self.config.db_password,
-            database=self.config.db_password,
+            database=self.config.db_name,
             min_size=int(self.config.db_min_pool_size),
             max_size=int(self.config.db_max_pool_size),
         )
-        self.client = self.pool
+        self._client = PostgresClient(pool=self.pool)
 
     async def _connect_mysql(self) -> None:
         self.pool = await aiomysql.create_pool(
@@ -38,20 +40,20 @@ class DatabaseManager:
             port=int(self.config.db_port),
             user=self.config.db_user,
             password=self.config.db_password,
-            database=self.config.db_password,
-            min_size=int(self.config.db_min_pool_size),
-            max_size=int(self.config.db_max_pool_size),
+            db=self.config.db_name,
+            minsize=int(self.config.db_min_pool_size),
+            maxsize=int(self.config.db_max_pool_size),
         )
-        self.client = self.pool
+        self._client = MySQLClient(pool=self.pool)
 
     async def disconnect(self) -> None:
-        if self.pool:
-            self.pool.close()
-            await self.pool.close()
+        if self._client:
+            await self._client.close()
             self.pool = None
-            self.client = None
+            self._client = None
 
-    async def get_client(self):
-        if self.pool is None:
+    @property
+    def client(self):
+        if self._client is None:
             raise RuntimeError("Database not connected. Call connect() first.")
-        return await self.pool.acquire()
+        return self._client

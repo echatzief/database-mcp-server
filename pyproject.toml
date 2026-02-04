@@ -8,5 +8,6 @@ dependencies = [
     "aiomysql>=0.3.2",
     "asyncio>=4.0.0",
     "asyncpg>=0.31.0",
+    "mcp>=1.26.0",
     "python-dotenv>=1.2.1",
 ]

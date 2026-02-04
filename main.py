@@ -3,8 +3,11 @@ import asyncio
 from src.lib.config import Config
 from src.database.manager import DatabaseManager
 from dotenv import load_dotenv
+from mcp.server import Server
 
 load_dotenv()
+
+app = Server("sql-mcp-server")
 
 async def main():
     config = Config()
