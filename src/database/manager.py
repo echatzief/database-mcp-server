@@ -5,7 +5,6 @@ from src.lib.config import Config
 from src.database.mysql_client import MySQLClient
 from src.database.postgres_client import PostgresClient
 
-
 class DatabaseManager:
     def __init__(self, config: Config) -> None:
         self.config = config
