@@ -10,10 +10,8 @@ from src.lib.config import Config
 from src.database.manager import DatabaseManager
 from src.database.formatter import format_results
 
-
 def create_mcp_server(database_manager: DatabaseManager, config: Config) -> FastMCP:
-    port = int(getattr(config, "http_port", 8080))
-    mcp = FastMCP("sql-mcp-server", host=config.db_host, port=port)
+    mcp = FastMCP("sql-mcp-server", host=config.http_host, port=int(config.http_port))
 
     @mcp.tool()
     async def execute_query(query: str, format_type: str = "json") -> str:
