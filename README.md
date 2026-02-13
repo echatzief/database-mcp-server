@@ -1,10 +1,10 @@
-# SQL-MCP-Server
+# Database-MCP-Server
 
-A Model Context Protocol (MCP) server that provides SQL database operations as tools for LLM-powered applications. Supports PostgreSQL and MySQL databases with connection pooling and flexible result formatting.
+A Model Context Protocol (MCP) server that provides database operations as tools for LLM-powered applications. Supports PostgreSQL, MySQL, and MongoDB databases with connection pooling and flexible result formatting.
 
 ## Features
 
-- **Multi-database support**: PostgreSQL and MySQL
+- **Multi-database support**: PostgreSQL, MySQL, and MongoDB
 - **Connection pooling**: Efficient database connection management
 - **Multiple result formats**: JSON and Markdown table output
 - **Streamable HTTP**: Modern MCP transport via HTTP
@@ -22,14 +22,14 @@ A Model Context Protocol (MCP) server that provides SQL database operations as t
 ## Requirements
 
 - Python 3.11+
-- PostgreSQL 12+ or MySQL 8.0+
+- PostgreSQL 12+, MySQL 8.0+, or MongoDB 4.0+
 
 ## Installation
 
 ```bash
 # Clone the repository
 git clone <repository-url>
-cd sql-mcp-server
+cd database-mcp-server
 
 # Install dependencies using uv (recommended)
 uv pip install -e .
@@ -50,9 +50,9 @@ Then edit `.env` with your database credentials and settings:
 
 ```env
 # Database Configuration
-DATABASE_PROVIDER=postgres  # or mysql
+DATABASE_PROVIDER=postgres  # or mysql, mongodb
 DATABASE_HOST=localhost
-DATABASE_PORT=5432          # 3306 for MySQL
+DATABASE_PORT=5432          # 3306 for MySQL, 27017 for MongoDB
 DATABASE_USER=your_username
 DATABASE_PASSWORD=your_password
 DATABASE_NAME=your_database
@@ -68,9 +68,9 @@ HTTP_PORT=8080
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `DATABASE_PROVIDER` | Yes | - | Database provider: `postgres` or `mysql` |
+| `DATABASE_PROVIDER` | Yes | - | Database provider: `postgres`, `mysql`, or `mongodb` |
 | `DATABASE_HOST` | Yes | - | Database server hostname or IP |
-| `DATABASE_PORT` | Yes | - | Database server port (5432 for PostgreSQL, 3306 for MySQL) |
+| `DATABASE_PORT` | Yes | - | Database server port (5432 for PostgreSQL, 3306 for MySQL, 27017 for MongoDB) |
 | `DATABASE_USER` | Yes | - | Database username |
 | `DATABASE_PASSWORD` | No | - | Database password |
 | `DATABASE_NAME` | Yes | - | Default database to connect to |
@@ -104,7 +104,7 @@ Add the server to your MCP client configuration:
       "command": "uv",
       "args": [
         "--directory",
-        "/path/to/sql-mcp-server",
+        "/path/to/database-mcp-server",
         "run",
         "python",
         "main.py"
@@ -121,7 +121,7 @@ Add the server to your MCP client configuration:
   "mcpServers": {
     "sql": {
       "command": "python",
-      "args": ["/path/to/sql-mcp-server/main.py"]
+      "args": ["/path/to/database-mcp-server/main.py"]
     }
   }
 }
@@ -145,30 +145,125 @@ The server exposes a Streamable HTTP endpoint. Configure your MCP client to conn
 
 ### Example Tool Calls
 
+#### Common Examples (All Providers)
+
 ```python
 # List all databases
 list_databases()
 
-# List tables in the configured database
+# List tables/collections in the configured database
 list_tables()
 
-# List tables in a specific database
+# List tables/collections in a specific database
 list_tables(database="another_db")
 
-# Describe a table schema
+# Describe a table/collection schema
 describe_table("users")
+```
 
-# Execute a custom query
+#### PostgreSQL / MySQL Examples (SQL)
+
+For PostgreSQL and MySQL, use standard SQL syntax:
+
+```python
+# Execute a SELECT query
 execute_query("SELECT * FROM users WHERE active = true LIMIT 10")
+
+# Execute with specific columns
+execute_query("SELECT name, email FROM users WHERE age > 18")
 
 # Get results in Markdown format
 execute_query("SELECT name, email FROM users", format_type="markdown")
+
+# INSERT, UPDATE, DELETE queries
+execute_query("INSERT INTO users (name, email) VALUES ('John', 'john@example.com')")
+execute_query("UPDATE users SET status = 'active' WHERE status = 'pending'")
+execute_query("DELETE FROM users WHERE inactive = true")
+
+# Join queries
+execute_query("""
+    SELECT u.name, o.order_id 
+    FROM users u 
+    JOIN orders o ON u.id = o.user_id 
+    WHERE u.active = true
+""")
+```
+
+#### MongoDB Examples (JSON)
+
+For MongoDB, queries use JSON format with operation type:
+
+```python
+# Find documents
+execute_query('{"collection": "users", "operation": "find", "filter": {"active": true}, "limit": 10}')
+
+# Find with projection (select specific fields)
+execute_query('{"collection": "users", "operation": "find", "projection": {"name": 1, "email": 1}}')
+
+# Find with sorting and pagination
+execute_query('{"collection": "users", "operation": "find", "filter": {"active": true}, "sort": {"created_at": -1}, "skip": 0, "limit": 20}')
+
+# Find one document
+execute_query('{"collection": "users", "operation": "find_one", "filter": {"_id": "64f8a2b1c9d8e7f6a5b4c3d2"}}')
+
+# Insert a document
+execute_query('{"collection": "users", "operation": "insert_one", "document": {"name": "John", "email": "john@example.com", "created_at": "2024-01-15T10:30:00"}}')
+
+# Insert multiple documents
+execute_query('{"collection": "users", "operation": "insert_many", "documents": [{"name": "John"}, {"name": "Jane"}]}')
+
+# Update documents
+execute_query('{"collection": "users", "operation": "update_one", "filter": {"email": "john@example.com"}, "update": {"$set": {"status": "active"}}}')
+execute_query('{"collection": "users", "operation": "update_many", "filter": {"status": "pending"}, "update": {"$set": {"status": "active"}}}')
+
+# Delete documents
+execute_query('{"collection": "users", "operation": "delete_one", "filter": {"email": "john@example.com"}}')
+execute_query('{"collection": "users", "operation": "delete_many", "filter": {"inactive": true}}')
+
+# Aggregation pipeline
+execute_query('{"collection": "orders", "operation": "aggregate", "pipeline": [{"$group": {"_id": "$status", "count": {"$sum": 1}}}]}')
+
+# Count documents
+execute_query('{"collection": "users", "operation": "count", "filter": {"active": true}}')
+```
+
+**Supported MongoDB Operations:**
+
+| Operation | Description |
+|-----------|-------------|
+| `find` | Query documents with optional filter, projection, sort, skip, limit |
+| `find_one` | Query a single document by filter |
+| `insert_one` | Insert a single document |
+| `insert_many` | Insert multiple documents |
+| `update_one` | Update a single document matching filter |
+| `update_many` | Update multiple documents matching filter |
+| `delete_one` | Delete a single document matching filter |
+| `delete_many` | Delete multiple documents matching filter |
+| `aggregate` | Run aggregation pipeline |
+| `count` | Count documents matching filter |
+
+**Query Format Reference:**
+
+```json
+{
+  "collection": "collection_name",    // Required: Collection to query
+  "operation": "find",                 // Required: Operation type (see above)
+  "filter": {},                        // Optional: Query filter (MongoDB query syntax)
+  "projection": {},                    // Optional: Fields to include/exclude
+  "sort": {"field": 1},               // Optional: Sort order (1=asc, -1=desc)
+  "skip": 0,                           // Optional: Number of documents to skip
+  "limit": 10,                         // Optional: Maximum documents to return
+  "document": {},                      // For insert_one: Document to insert
+  "documents": [{}, {}],               // For insert_many: Array of documents
+  "update": {"$set": {}},             // For update operations: Update operators
+  "pipeline": [{}, {}]                 // For aggregate: Aggregation pipeline stages
+}
 ```
 
 ## Project Structure
 
 ```
-sql-mcp-server/
+database-mcp-server/
 ├── main.py                 # Entry point
 ├── server.py               # MCP server and tool definitions
 ├── pyproject.toml          # Project configuration
@@ -181,7 +276,8 @@ sql-mcp-server/
         ├── manager.py      # Database connection pool manager
         ├── formatter.py    # Result formatting (JSON/Markdown)
         ├── postgres_client.py  # PostgreSQL-specific operations
-        └── mysql_client.py     # MySQL-specific operations
+        ├── mysql_client.py     # MySQL-specific operations
+        └── mongodb_client.py   # MongoDB-specific operations
 ```
 
 ## Development
@@ -198,6 +294,7 @@ uv run watch -c "python main.py" .
 | `mcp>=1.26.0` | Model Context Protocol framework |
 | `asyncpg` | PostgreSQL async driver |
 | `aiomysql` | MySQL async driver |
+| `pymongo>=4.9.0` | MongoDB async driver |
 | `python-dotenv` | Environment variable management |
 
 ## Running Tests

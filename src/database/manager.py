@@ -4,6 +4,8 @@ import aiomysql
 from src.lib.config import Config
 from src.database.mysql_client import MySQLClient
 from src.database.postgres_client import PostgresClient
+from src.database.mongodb_client import MongoDBClient
+from pymongo import AsyncMongoClient
 
 class DatabaseManager:
     def __init__(self, config: Config) -> None:
@@ -16,6 +18,8 @@ class DatabaseManager:
             await self._connect_postgres()
         elif self.config.db_provider == "mysql":
             await self._connect_mysql()
+        elif self.config.db_provider == "mongodb":
+            await self._connect_mongodb()
         else:
             raise ValueError(
                 f"Unsupported database provider: {self.config.db_provider}"
@@ -44,6 +48,18 @@ class DatabaseManager:
             maxsize=int(self.config.db_max_pool_size),
         )
         self._client = MySQLClient(pool=self.pool)
+
+    async def _connect_mongodb(self) -> None:
+        self.pool = AsyncMongoClient(
+            host=self.config.db_host,
+            port=int(self.config.db_port),
+            username=self.config.db_user,
+            password=self.config.db_password,
+            minPoolSize=int(self.config.db_min_pool_size),
+            maxPoolSize=int(self.config.db_max_pool_size),
+            authSource="admin",
+        )
+        self._client = MongoDBClient(client=self.pool, database=self.config.db_name)
 
     async def disconnect(self) -> None:
         if self._client:
