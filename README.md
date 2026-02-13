@@ -307,7 +307,15 @@ MIT
 
 ## Changelog
 
-### v0.1.0 (2026-02-05)
+### v1.1.0 (2026-02-14)
+
+- Added MongoDB support with PyMongo async driver
+- New `mongodb_client.py` with full CRUD operations (find, insert, update, delete, aggregate, count)
+- Schema inference for `describe_table` via document sampling
+- Connection pooling support for MongoDB
+- Updated documentation with provider-specific examples
+
+### v1.0.0 (2026-02-05)
 
 - Initial release
 - Added Streamable HTTP transport support for MCP
